@@ -1,0 +1,3 @@
+# shellpy
+
+Pythonで作ったシェルもどき。
