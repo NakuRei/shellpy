@@ -1,4 +1,7 @@
+import sys
+
 from builtin import BUILTIN_COMMANDS
+from search import search_path
 
 
 def main():
@@ -17,8 +20,13 @@ def main():
         if command in BUILTIN_COMMANDS:
             BUILTIN_COMMANDS[command].process(args)
         else:
-            # TODO: Implement external commands
-            print(f"Command not found: {command}")
+            command_path = search_path(command)
+            if command_path is None:
+                print(f"shellpy: {command}: command not found", file=sys.stderr)
+                continue
+
+            # TODO: Implement the execution of external commands
+            print(f"Executing {command_path} with args {args}")
 
 
 if __name__ == "__main__":
