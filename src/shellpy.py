@@ -1,3 +1,4 @@
+import os
 import sys
 
 from builtin import BUILTIN_COMMANDS
@@ -16,7 +17,6 @@ def main():
         command = tokens[0]
         args = tokens[1:]
 
-        # If the command is a builtin command, execute it
         if command in BUILTIN_COMMANDS:
             BUILTIN_COMMANDS[command].process(args)
         else:
@@ -25,8 +25,11 @@ def main():
                 print(f"shellpy: {command}: command not found", file=sys.stderr)
                 continue
 
-            # TODO: Implement the execution of external commands
-            print(f"Executing {command_path} with args {args}")
+            pid = os.fork()
+            if pid == 0:  # Child process
+                os.execv(command_path, [command] + args)
+            else:  # Parent process
+                os.waitpid(pid, 0)
 
 
 if __name__ == "__main__":
