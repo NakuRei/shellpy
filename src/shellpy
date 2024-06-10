@@ -15,7 +15,11 @@ def main():
     signal.signal(signal.SIGINT, sigint_handler.handle)
 
     while True:
-        line = input("> ")
+        try:
+            line = input("> ")
+        except EOFError:
+            break  # Exit on EOF (Ctrl-D)
+
         tokens = line.split()
 
         # If no command is given, continue
