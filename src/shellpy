@@ -10,20 +10,20 @@ import search
 import signal_handler
 
 
-def interpret_line(line: str, sigint_handler: signal_handler.SigIntHandler):
-    # Ignore comments
-    # TODO: 行の途中からのコメントは無視されない
-    if line.strip().startswith("#"):
-        return
+def set_stdio(stdin_fd: int | None, stdout_fd: int | None):
+    if stdin_fd is not None:
+        os.dup2(stdin_fd, sys.stdin.fileno())
+    if stdout_fd is not None:
+        os.dup2(stdout_fd, sys.stdout.fileno())
 
-    tokens = line.split()
 
-    # If no command is given, do nothing
-    if len(tokens) == 0:
-        return
-
-    command = tokens[0]
-    args = tokens[1:]
+def run_command(
+    command: str,
+    args: list[str],
+    sigint_handler: signal_handler.SigIntHandler,
+    stdin_fd: int | None,
+    stdout_fd: int | None,
+):
 
     if command in builtin.BUILTIN_COMMANDS:
         builtin.BUILTIN_COMMANDS[command].process(args)
@@ -36,6 +36,7 @@ def interpret_line(line: str, sigint_handler: signal_handler.SigIntHandler):
         try:
             pid = os.fork()
             if pid == 0:  # Child process
+                set_stdio(stdin_fd, stdout_fd)
                 os.execv(command_path, [command] + args)
             else:  # Parent process
                 sigint_handler.set_pid(pid)
@@ -50,6 +51,60 @@ def interpret_line(line: str, sigint_handler: signal_handler.SigIntHandler):
                     sigint_handler.set_pid(None)
         except OSError as e:
             print(f"shellpy: error executing {command}: {e}", file=sys.stderr)
+
+
+def interpret_line(line: str, sigint_handler: signal_handler.SigIntHandler):
+    # Ignore comments
+    # TODO: 行の途中からのコメントは無視されない
+    if line.strip().startswith("#"):
+        return
+
+    tokens = line.split()
+
+    # If no command is given, do nothing
+    if len(tokens) == 0:
+        return
+
+    redirection_count = tokens.count(">")
+    pipe_count = tokens.count("|")
+    if redirection_count + pipe_count > 1:
+        # TODO: リダイレクトとパイプが2つ以上ある場合は実装されていない
+        # ここを実装しようとすると結構大変らしい
+        print(
+            "shellpy: more than one redirection or pipe is not supported",
+            file=sys.stderr,
+        )
+        return
+
+    if redirection_count == 1:  # リダイレクトがある場合
+        redirection_index = tokens.index(">")
+        redirection_file = tokens[redirection_index + 1]
+        try:
+            # NOTE: 単純に実装するため、bash等とは異なるタイミングでファイルを開いている
+            stdout_file = open(redirection_file, "w")
+            stdout_fd = stdout_file.fileno()
+            run_command(
+                command=tokens[0],
+                args=tokens[1:redirection_index],
+                sigint_handler=sigint_handler,
+                stdin_fd=None,
+                stdout_fd=stdout_fd,
+            )
+            os.close(stdout_fd)
+        except OSError as e:
+            print(f"shellpy: error opening {redirection_file}: {e}")
+            return
+    elif pipe_count == 1:
+        # TODO: パイプを実装
+        pass
+    else:
+        run_command(
+            command=tokens[0],
+            args=tokens[1:],
+            sigint_handler=sigint_handler,
+            stdin_fd=None,
+            stdout_fd=None,
+        )
 
 
 def main():
