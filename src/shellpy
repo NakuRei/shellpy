@@ -5,13 +5,13 @@ import signal
 import sys
 
 
-from builtin import BUILTIN_COMMANDS
-from search import search_path
-from signal_handler import SigIntHandler
+import builtin
+import search
+import signal_handler
 
 
 def main():
-    sigint_handler = SigIntHandler()
+    sigint_handler = signal_handler.SigIntHandler()
     signal.signal(signal.SIGINT, sigint_handler.handle)
 
     while True:
@@ -29,10 +29,10 @@ def main():
         command = tokens[0]
         args = tokens[1:]
 
-        if command in BUILTIN_COMMANDS:
-            BUILTIN_COMMANDS[command].process(args)
+        if command in builtin.BUILTIN_COMMANDS:
+            builtin.BUILTIN_COMMANDS[command].process(args)
         else:
-            command_path = search_path(command)
+            command_path = search.search_path(command)
             if command_path is None:
                 print(f"shellpy: {command}: command not found", file=sys.stderr)
                 continue
