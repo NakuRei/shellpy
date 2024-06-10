@@ -16,6 +16,7 @@ RUN apt-get update -y \
   ca-certificates \
   openssh-client \
   curl \
+  procps \
   && apt-get -y autoclean \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
