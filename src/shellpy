@@ -11,6 +11,11 @@ import signal_handler
 
 
 def interpret_line(line: str, sigint_handler: signal_handler.SigIntHandler):
+    # Ignore comments
+    # TODO: 行の途中からのコメントは無視されない
+    if line.strip().startswith("#"):
+        return
+
     tokens = line.split()
 
     # If no command is given, do nothing
