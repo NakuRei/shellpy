@@ -10,53 +10,64 @@ import search
 import signal_handler
 
 
+def interpret_line(line: str, sigint_handler: signal_handler.SigIntHandler):
+    tokens = line.split()
+
+    # If no command is given, do nothing
+    if len(tokens) == 0:
+        return
+
+    command = tokens[0]
+    args = tokens[1:]
+
+    if command in builtin.BUILTIN_COMMANDS:
+        builtin.BUILTIN_COMMANDS[command].process(args)
+    else:
+        command_path = search.search_path(command)
+        if command_path is None:
+            print(f"shellpy: {command}: command not found", file=sys.stderr)
+            return
+
+        try:
+            pid = os.fork()
+            if pid == 0:  # Child process
+                os.execv(command_path, [command] + args)
+            else:  # Parent process
+                sigint_handler.set_pid(pid)
+                try:
+                    os.waitpid(pid, 0)
+                except OSError as e:
+                    print(
+                        f"shellpy: error waiting for {command}: {e}",
+                        file=sys.stderr,
+                    )
+                finally:
+                    sigint_handler.set_pid(None)
+        except OSError as e:
+            print(f"shellpy: error executing {command}: {e}", file=sys.stderr)
+
+
 def main():
+    file_path = sys.argv[1] if len(sys.argv) > 1 else None
+
     sigint_handler = signal_handler.SigIntHandler()
     signal.signal(signal.SIGINT, sigint_handler.handle)
 
-    while True:
-        try:
-            line = input("> ")
-        except EOFError:
-            builtin.Exit().process([])
-            break  # Exit on EOF (Ctrl-D)
+    if file_path is None:  # Interactive mode
 
-        tokens = line.split()
-
-        # If no command is given, continue
-        if len(tokens) == 0:
-            continue
-
-        command = tokens[0]
-        args = tokens[1:]
-
-        if command in builtin.BUILTIN_COMMANDS:
-            builtin.BUILTIN_COMMANDS[command].process(args)
-        else:
-            command_path = search.search_path(command)
-            if command_path is None:
-                print(f"shellpy: {command}: command not found", file=sys.stderr)
-                continue
-
+        while True:
             try:
-                pid = os.fork()
-                if pid == 0:  # Child process
-                    os.execv(command_path, [command] + args)
-                else:  # Parent process
-                    sigint_handler.set_pid(pid)
-                    try:
-                        os.waitpid(pid, 0)
-                    except OSError as e:
-                        print(
-                            f"shellpy: error waiting for {command}: {e}",
-                            file=sys.stderr,
-                        )
-                    finally:
-                        sigint_handler.set_pid(None)
-            except OSError as e:
-                print(
-                    f"shellpy: error executing {command}: {e}", file=sys.stderr
-                )
+                line = input("> ")
+            except EOFError:
+                builtin.Exit().process([])
+                break  # Exit on EOF (Ctrl-D)
+
+            interpret_line(line, sigint_handler)
+
+    else:  # Batch mode
+        with open(file_path, "r") as file:
+            for line in file:
+                interpret_line(line, sigint_handler)
 
 
 if __name__ == "__main__":
