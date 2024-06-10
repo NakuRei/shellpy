@@ -18,6 +18,7 @@ def main():
         try:
             line = input("> ")
         except EOFError:
+            builtin.Exit().process([])
             break  # Exit on EOF (Ctrl-D)
 
         tokens = line.split()
