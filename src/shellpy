@@ -104,8 +104,28 @@ def interpret_line(line: str, sigint_handler: signal_handler.SigIntHandler):
             print(f"shellpy: error opening {redirection_file}: {e}")
             return
     elif pipe_count == 1:
-        # TODO: パイプを実装
-        pass
+        pipe_index = tokens.index("|")
+        pipe_read, pipe_write = os.pipe()
+
+        # TODO: 本来パイプの右と左のコマンドは並列に実行するが、
+        # ここでは実装を簡易的にするため順次に実行するようにしている
+        run_command(
+            command=tokens[0],
+            args=tokens[1:pipe_index],
+            sigint_handler=sigint_handler,
+            stdin_fd=None,
+            stdout_fd=pipe_write,
+        )
+        os.close(pipe_write)
+
+        run_command(
+            command=tokens[pipe_index + 1],
+            args=tokens[pipe_index + 2 :],
+            sigint_handler=sigint_handler,
+            stdin_fd=pipe_read,
+            stdout_fd=None,
+        )
+        os.close(pipe_read)
     else:
         run_command(
             command=tokens[0],
