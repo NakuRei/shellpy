@@ -8,6 +8,7 @@ import sys
 import builtin
 import search
 import signal_handler
+import shell
 
 
 def set_stdio(stdin_fd: int | None, stdout_fd: int | None):
@@ -139,14 +140,15 @@ def interpret_line(line: str, sigint_handler: signal_handler.SigIntHandler):
 def main():
     file_path = sys.argv[1] if len(sys.argv) > 1 else None
 
-    sigint_handler = signal_handler.SigIntHandler()
+    shell_prompt = shell.get_shell_prompt()
+    sigint_handler = signal_handler.SigIntHandler(shell_prompt=shell_prompt)
     signal.signal(signal.SIGINT, sigint_handler.handle)
 
     if file_path is None:  # Interactive mode
 
         while True:
             try:
-                line = input("> ")
+                line = input(shell_prompt)
             except EOFError:
                 builtin.Exit().process([])
                 break  # Exit on EOF (Ctrl-D)
