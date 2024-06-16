@@ -26,7 +26,16 @@ def run_command(
 ):
 
     if command in builtin.BUILTIN_COMMANDS:
+        # dupシステムコールで標準入出力と同じファイルディスクリプタを作成しておく
+        default_stdin_dup_fd = os.dup(sys.stdin.fileno())
+        default_stdout_dup_fd = os.dup(sys.stdout.fileno())
+        set_stdio(stdin_fd, stdout_fd)
+
         builtin.BUILTIN_COMMANDS[command].process(args)
+
+        set_stdio(default_stdin_dup_fd, default_stdout_dup_fd)
+        os.close(default_stdin_dup_fd)
+        os.close(default_stdout_dup_fd)
     else:
         command_path = search.search_path(command)
         if command_path is None:
