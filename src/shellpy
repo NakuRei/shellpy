@@ -46,7 +46,7 @@ def run_command(
             pid = os.fork()
             if pid == 0:  # Child process
                 set_stdio(stdin_fd, stdout_fd)
-                os.execv(command_path, [command] + args)
+                os.execve(command_path, [command] + args, os.environ)
             else:  # Parent process
                 sigint_handler.set_pid(pid)
                 try:
